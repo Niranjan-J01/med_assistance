@@ -2,16 +2,32 @@ import os
 os.environ["CUDA_VISIBLE_DEVICEs"] = "0"
 
 import torch as ts 
+import pandas as pd
 ts.cuda.get_device_name(0)
 
-# loader
+# loaders
+medquad = pd.read_csv("medquad.csv")
 
-from langchain_community.document_loaders import DirectoryLoader , PyPDFLoader
+med_dict = medquad.to_dict(orient="records")
+#print(med_dict[:1])
+
+from langchain_core.documents import Document  
+
+extra_docs = [
+    Document(
+        page_content=f"Q: {row['question']}\nA: {row['answer']}",
+        metadata={"source": row['source'], "focus_area": row['focus_area']}
+    )
+    for row in med_dict
+]
+
+
+from langchain_community.document_loaders import DirectoryLoader , PyMuPDFLoader
 
 loader = DirectoryLoader(
-    path=r"/data",
+    path=r".\data",
     glob=["*.pdf", "*.csv"],
-    loader_cls=PyPDFLoader
+    loader_cls=PyMuPDFLoader
 )
 doc = loader.load()
 
@@ -27,22 +43,25 @@ def text_splitter(x):
     doc = text_splitter.split_documents(x)
     return doc
 
-chunks  = text_splitter(doc)
+chunks_  = text_splitter(doc)
+chunks = chunks_ + extra_docs
 
 # embedding
 
 from sentence_transformers import SentenceTransformer
 
-class embed(SentenceTransformer):
+class embed():
 
     def __init__(self , model_name = "all-MiniLM-L6-v2"):
-        self.model = model_name
-        self.emd = SentenceTransformer(self.model , device="cuda")
-        print(f"activating model : {self.model} dimension = {self.model.get_embedding_dimension()}")
+        self.model_name = model_name
+        self.model = SentenceTransformer(self.model_name , device="cuda")
+        print(f"activating model : {self.model_name} dimension = {self.model.get_embedding_dimension()}")
     
-    def get_embedding(self, chunks):
-        text  = self.model.encode( chunks , show_progress_bar = True , batch_size = 32)
-        print(f"embedding shape : {text.shape()}")
+    def generate_embedding(self, chunks):
+
+        docs = [text.page_content for text in chunks]
+        text  = self.model.encode( docs , show_progress_bar = True , batch_size = 32)
+        print(f"embedding shape : {text.shape}")
         return text
 
 embeding = embed()
@@ -65,47 +84,54 @@ class vector_DB:
     
     def _intiallization_(self):
 
-        os.makedirs(self.presistent_dictionary , exist_ok=True)
+        os.makedirs(self.presistent_directory , exist_ok=True)
 
         self.client = chromadb.PersistentClient(path = self.presistent_directory)
         self.collection = self.client.get_or_create_collection(
             name = self.collection_name,
             metadata={"discription" : "this a vectordatabase to store embbededd data"}
         )
-        print(f"doc count : {self.collection}")
+        print(f"doc count : {self.collection.count()}")
 
-    def add_document(self , document  , embbeddings):
+    def add_document(self , document  , embbeddings , batch = 5000):
+        
+        for start in range(0 , len(document) , batch):
+            end = start + batch 
+            batch_emd = embbeddings[start:end]
+            batch_doc = document[start:end]
+            id = []
+            net_metadata = []
+            net_embedding = []
+            docs = []
 
-        id = []
-        net_metadata = []
-        net_embbedding = []
-        documents = []
+            for i , (doc,emb) in enumerate(zip(batch_doc,batch_emd)):
 
-        for i , (doc,emb) in enumerate(zip(document , embbeddings)):
+                doc_id = f"doc_id {uuid.uuid1()}"
+                id.append(doc_id)
 
-            doc_id = f"doc_id {uuid.uuid1()}"
-            id.append(doc_id)
+                metadata = dict(doc.metadata)
+                metadata["index"] = i
+                metadata["content lenght"] = len(doc.page_content)
+                
+                net_metadata.append(metadata)
+                net_embedding.append(emb)
 
-            metadata = dict(doc.metadata)
-            metadata["index"] = i
-            metadata["content lenght"] = len(doc.page_content)
+                docs.append(doc.page_content)
             
-            net_metadata.append(metadata)
-            net_embbedding.append(emb)
+            self.collection.add(
+                ids = id,
+                metadatas = net_metadata,
+                embeddings = net_embedding,
+                documents = docs
+            )
 
-            documents.append(doc.page_content)
-        
-        self.collection(
-            ids = id,
-            metadatas = net_embbedding,
-            embbeddings = net_embbedding,
-            docs  = documents
-        )
+            return self.collection 
 
-        return self.collection
+emd_data = embeding.generate_embedding(chunks)
 
-
-
-
-        
+vector_database = vector_DB()
+if vector_database.collection.count() == 0:
+    vector_database.add_document(chunks , emd_data)
+else:
+    print(f"DB already has {vector_database.collection.count()} docs!")
 
