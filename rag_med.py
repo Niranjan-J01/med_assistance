@@ -64,6 +64,12 @@ class embed():
         print(f"embedding shape : {text.shape}")
         return text
 
+    def query_embed(self , query):
+
+        text = self.model.encode(query)
+
+        return text
+
 embeding = embed()
 
 # vector store 
@@ -135,3 +141,63 @@ if vector_database.collection.count() == 0:
 else:
     print(f"DB already has {vector_database.collection.count()} docs!")
 
+# retrival
+
+class retrival:
+
+    def __init__(self , embedding_part , vector_db ):
+
+        self.embedding_part = embedding_part
+        self.vector_db = vector_db
+    
+    def retrival_(self , query , top_K = 5 , score_thresold = 0.0):
+
+        # query embedding 
+
+        query_embbed =self.embedding_part.query_embed([query])[0]
+
+        # simantic search 
+
+        results = self.vector_db.collection.query(
+            query_embeddings = [query_embbed.tolist()] , 
+            n_results = top_K
+        )
+
+        final_retrival = []
+
+        if results["documents"] and results["documents"][0]:
+
+            ids = results["ids"][0]
+            documents = results["documents"][0]
+            metadata = results["metadatas"][0]
+            distance = results["distances"][0]
+        
+        for i , (id , doc , meta , dist) in enumerate(zip(ids , documents , metadata , distance)) :
+
+            similarity  = 1/(1+ dist)
+
+            if similarity > score_thresold :
+
+                retrived = {
+                    "id" : id,
+                    "document":doc,
+                    "metadata":meta , 
+                    "distance" : dist,
+                    "similarity_score" : similarity,
+                    "rank":1+i
+                }
+
+                final_retrival.append(retrived)
+
+        return final_retrival
+
+retrival_pipe = retrival(embeding , vector_database)
+
+results = retrival_pipe.retrival_(
+    "How to prevent Glaucoma ?",
+     score_thresold=0.35
+)
+for doc in results:
+    print(f"\nRank: {doc['rank']}")
+    print(f"Similarity: {doc['similarity_score']}")
+    print(f"Content: {doc['document'][:200]}")
