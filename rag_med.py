@@ -131,7 +131,7 @@ class vector_DB:
                 documents = docs
             )
 
-            return self.collection 
+        return self.collection 
 
 emd_data = embeding.generate_embedding(chunks)
 
@@ -197,7 +197,10 @@ results = retrival_pipe.retrival_(
     "How to prevent Glaucoma ?",
      score_thresold=0.35
 )
+
 for doc in results:
     print(f"\nRank: {doc['rank']}")
     print(f"Similarity: {doc['similarity_score']}")
     print(f"Content: {doc['document'][:200]}")
+#
+
