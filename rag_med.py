@@ -1,5 +1,5 @@
 import os 
-os.environ["CUDA_VISIBLE_DEVICEs"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import torch as ts 
 import pandas as pd
@@ -141,16 +141,26 @@ if vector_database.collection.count() == 0:
 else:
     print(f"DB already has {vector_database.collection.count()} docs!")
 
+# reranker 
+
+from sentence_transformers import CrossEncoder
+
+reranker = CrossEncoder(
+    "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    device="cuda"
+)
+
 # retrival
 
 class retrival:
 
-    def __init__(self , embedding_part , vector_db ):
+    def __init__(self , embedding_part , vector_db , reranker):
 
         self.embedding_part = embedding_part
         self.vector_db = vector_db
-    
-    def retrival_(self , query , top_K = 5 , score_thresold = 0.0):
+        self.reranker = reranker
+        
+    def retrival_(self , query , retrival_K = 10 ,top_k =3,  score_thresold = 0.0):
 
         # query embedding 
 
@@ -160,7 +170,7 @@ class retrival:
 
         results = self.vector_db.collection.query(
             query_embeddings = [query_embbed.tolist()] , 
-            n_results = top_K
+            n_results = retrival_K
         )
 
         final_retrival = []
@@ -172,35 +182,92 @@ class retrival:
             metadata = results["metadatas"][0]
             distance = results["distances"][0]
         
-        for i , (id , doc , meta , dist) in enumerate(zip(ids , documents , metadata , distance)) :
+            for i , (id , doc , meta , dist) in enumerate(zip(ids , documents , metadata , distance)) :
 
-            similarity  = 1/(1+ dist)
+                similarity  = 1/(1+ dist)
 
-            if similarity > score_thresold :
+                if similarity > score_thresold :
 
-                retrived = {
-                    "id" : id,
-                    "document":doc,
-                    "metadata":meta , 
-                    "distance" : dist,
-                    "similarity_score" : similarity,
-                    "rank":1+i
-                }
+                    retrived = {
+                        "id" : id,
+                        "document":doc,
+                        "metadata":meta , 
+                        "distance" : dist,
+                        "similarity_score" : similarity,
+                        "rank":1+i
+                    }
 
-                final_retrival.append(retrived)
+                    final_retrival.append(retrived)
+            
+            if len(final_retrival)==0 :
 
-        return final_retrival
+                return []
 
-retrival_pipe = retrival(embeding , vector_database)
+            pairs = [(query , doc["document"]) for doc in final_retrival]
+
+            score = self.reranker.predict(pairs)
+
+            for (docu , score_) in zip(final_retrival , score):
+
+                docu["cross_score"] = float(score_)
+            
+            final_retrival.sort(
+                key=lambda x: x["cross_score"],
+                reverse=True
+            )
+
+        return final_retrival[:top_k]
+
+retrival_pipe = retrival(embeding , vector_database , reranker)
 
 results = retrival_pipe.retrival_(
     "How to prevent Glaucoma ?",
      score_thresold=0.35
 )
 
-for doc in results:
+"""for doc in results:
     print(f"\nRank: {doc['rank']}")
     print(f"Similarity: {doc['similarity_score']}")
     print(f"Content: {doc['document'][:200]}")
-#
+"""
+
+
+# conetext builder 
+
+def context_builder (results) : 
+
+    context = []
+    citaion = []
+
+    for  doc in results:
+
+        content = doc["document"]
+
+        metadata = doc ["metadata"]
+
+
+        SOURCE = metadata.get("source" , "UNKNOWN")
+        PAGE = metadata.get("page" , "N/A")
+
+        block = F"""
+SOURCE : {SOURCE}
+PAGE : {PAGE}
+
+{content}
+
+"""
+        context.append(block)
+        citaion.append(f"""
+            SOURCE : {SOURCE}
+            PAGE : {PAGE}
+        """)
+
+    context_part = "\n\n".join(context)
+
+    return context_part , citaion
+
+
+
+
+
 
