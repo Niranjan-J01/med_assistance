@@ -266,7 +266,53 @@ PAGE : {PAGE}
 
     return context_part , citaion
 
+# prompt 
 
+class PromptBuilder:
+
+    def __init__(self):
+        self.system_prompt = """
+You are an AI Medical Assistant.
+
+Your job is to answer ONLY using the provided medical context.
+
+Rules:
+1. Use ONLY the provided context.
+2. If the answer is not present in the context, say:
+   "I couldn't find sufficient information in the provided medical documents."
+3. Do NOT make up facts.
+4. Do NOT diagnose diseases.
+5. Keep answers medically accurate and concise.
+6. Mention uncertainty whenever the context is incomplete.
+7. Explain in simple language whenever possible.
+8. Do not mention information that is not supported by the retrieved documents.
+"""
+
+    def build_prompt(self, query, context):
+
+        prompt = f"""
+{self.system_prompt}
+
+==========================
+MEDICAL CONTEXT
+==========================
+
+{context}
+
+==========================
+USER QUESTION
+==========================
+
+{query}
+
+==========================
+ANSWER
+==========================
+
+Provide a clear, evidence-based answer using only the medical context above.
+"""
+
+        return prompt
 
 
 
