@@ -220,10 +220,6 @@ class retrival:
 
 retrival_pipe = retrival(embeding , vector_database , reranker)
 
-results = retrival_pipe.retrival_(
-    "How to prevent Glaucoma ?",
-     score_thresold=0.35
-)
 
 """for doc in results:
     print(f"\nRank: {doc['rank']}")
@@ -266,6 +262,7 @@ PAGE : {PAGE}
 
     return context_part , citaion
 
+
 # prompt 
 
 class PromptBuilder:
@@ -278,14 +275,27 @@ Your job is to answer ONLY using the provided medical context.
 
 Rules:
 1. Use ONLY the provided context.
-2. If the answer is not present in the context, say:
-   "I couldn't find sufficient information in the provided medical documents."
+2. Use the provided medical context to answer the user's question.
+
+If the context contains partial information,
+provide the best answer possible using ONLY that information.
+
+If the context contains no relevant information,
+say:
+
+"I couldn't find sufficient information in the provided medical documents."
+
+Never use outside knowledge.
+Never fabricate information.
 3. Do NOT make up facts.
 4. Do NOT diagnose diseases.
 5. Keep answers medically accurate and concise.
 6. Mention uncertainty whenever the context is incomplete.
 7. Explain in simple language whenever possible.
 8. Do not mention information that is not supported by the retrieved documents.
+9. When answering, cite the supporting sources using the format:
+
+[Source: SOURCE_NAME | Page: PAGE_NUMBER]
 """
 
     def build_prompt(self, query, context):
@@ -293,26 +303,269 @@ Rules:
         prompt = f"""
 {self.system_prompt}
 
-==========================
-MEDICAL CONTEXT
-==========================
+MEDICAL CONTEXT :
 
 {context}
 
-==========================
-USER QUESTION
-==========================
+USER QUESTION :
 
 {query}
 
-==========================
-ANSWER
-==========================
+ANSWER :
 
 Provide a clear, evidence-based answer using only the medical context above.
 """
 
         return prompt
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+api_key = os.getenv("GROQ_API_KEY")
+
+from groq import Groq
+
+class Response_generater :
+
+    def __init__(self , api = api_key , model="llama-3.3-70b-versatile"):
+
+        self.client = Groq(api_key=api)
+        self.model = model
+    
+    def generate (self , prompt):
+
+        Response = self.client.chat.completions.create(
+
+            model = self.model,
+
+            messages=[
+                {
+                    "role" : "user",
+                    "content": prompt
+                }
+            ],
+            temperature= 0.0,
+            max_completion_tokens=1024
+            
+        )
+        return {
+            "answer": Response.choices[0].message.content,
+            "model": self.model,
+            "usage": Response.usage
+        }
+
+class ConfidenceEstimator:
+
+    def __init__(
+        self,
+        high_threshold=0.80,
+        medium_threshold=0.60
+    ):
+
+        self.high_threshold = high_threshold
+        self.medium_threshold = medium_threshold
+
+    def estimate(self, retrieved_docs, answer):
+
+        if len(retrieved_docs) == 0:
+
+            return {
+                "score": 0.0,
+                "level": "Low",
+                "reason": "No relevant documents were retrieved."
+            }
+
+        cross_scores = [
+            doc["cross_score"]
+            for doc in retrieved_docs
+        ]
+
+        avg_cross = sum(cross_scores) / len(cross_scores)
+
+        confidence = 1 / (1 + pow(2.71828, -avg_cross))
+
+        if "couldn't find sufficient information" in answer.lower():
+
+            confidence *= 0.60
+
+        if confidence >= self.high_threshold:
+
+            level = "High"
+
+        elif confidence >= self.medium_threshold:
+
+            level = "Medium"
+
+        else:
+
+            level = "Low"
+
+        return {
+
+            "score": round(confidence, 2),
+
+            "level": level,
+
+            "reason": f"Average CrossEncoder score = {avg_cross:.2f}"
+
+        }
+
+confidence =  ConfidenceEstimator()  
+
+class safetylayer:
+
+    def __init__(self):
+
+        self.emergency_keywords = [
+            "chest pain",
+            "can't breathe",
+            "cannot breathe",
+            "difficulty breathing",
+            "severe bleeding",
+            "unconscious",
+            "seizure",
+            "suicidal",
+            "kill myself",
+            "sudden severe headache",
+            "face drooping",
+            "slurred speech"
+        ]
+
+        self.unsafe_keywords = [
+            "diagnose me",
+            "give me a diagnosis",
+            "how much should i take",
+            "what dosage should i take",
+            "prescribe me",
+            "which prescription drug should i take",
+            "should i stop my medication",
+            "can i stop taking my medication",
+            "change my medication dose",
+            "increase my medication dose"
+        ]
+
+    def contain_keywords( self , query , keywords ):
+
+        query = query.lower()
+
+        return any( keyword in query for keyword in keywords)
+    
+    def check_point(self , query):
+
+        # emergency check point 
+
+        if self.contain_keywords(query , self.emergency_keywords) :
+
+            return {
+                "allowed" : False,
+                "type" : "emergency",
+                "message" : (
+                    "Your message may describe a medical emergency. "
+                    "Please seek immediate medical attention or contact "
+                    "local emergency services."
+                )
+            }
+
+        # unnsafe_keyword 
+
+        if self.contain_keywords(query , self.unsafe_keywords) :
+
+             return {
+                "allowed": False,
+                "type": "unsafe_request",
+                "message": (
+                    "I can't provide personalized diagnoses, prescribe "
+                    "medication, recommend specific dosages, or advise you "
+                    "to stop or change prescribed treatment. Please consult "
+                    "a qualified healthcare professional."
+                )
+            }
+        
+        return {
+
+            "allowed" : True,
+            "type" : "Normal",
+            "message" : None
+        }
+
+safety = safetylayer()
+
+while True:
+
+    query = input("Ask: ")
+
+    safety_result = safety.check_point(query)
+
+    if not safety_result["allowed"]:
+        print(safety_result["message"])
+
+    else:
+
+        results = retrival_pipe.retrival_(
+            query,
+            score_thresold=0.35
+        )
+
+        context, citations = context_builder(results)
+
+        prompt_builder = PromptBuilder()
+
+        prompt = prompt_builder.build_prompt(
+            query,
+            context
+        )
+
+        llm = Response_generater()
+
+        response = llm.generate(prompt)
+
+        estimator = confidence.estimate(results , response["answer"])
+
+        print(f""" answer : 
+            
+        {response["answer"]}
+
+        CONFIDENCE :
+                
+        score : {estimator["score"]}
+        level : {estimator["level"]}
+        reason : {estimator["reason"]}
+
+        CITATION :
+        """)
+
+        refusal = [
+            "couldn't find sufficient information",
+            "insufficient information",
+            "not enough information",
+            "unable to answer from the provided context"
+        ]
+
+        is_refusal = any(
+            phrase in response["answer"].lower()
+            for phrase in refusal
+        )
+
+        if not is_refusal:
+            print("ENTERED CITATION IF BLOCK")
+            for c in citations:
+                print(c)
+        else :
+            print("N/A")            
+
+        print(
+            "This information is for educational purposes only "
+            "and does not replace professional medical advice."
+        )
+            
+
+
+
+
+
+
+
 
 
 
