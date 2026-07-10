@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MedAssist AI</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<div class="app">
+
+    <header>
+        <div>
+            <h1>MedAssist AI</h1>
+            <p>Evidence-Grounded Medical Information Assistant</p>
+        </div>
+
+        <div class="status">
+            <span class="status-dot"></span>
+            Local RAG System
+        </div>
+    </header>
+
+
+    <div class="disclaimer">
+
+        <strong>Medical Information Notice</strong>
+
+        <span>
+            MedAssist AI provides educational medical information
+            grounded in retrieved documents. It does not replace
+            professional medical advice, diagnosis, or treatment.
+        </span>
+
+    </div>
+
+
+    <main>
+
+        <section class="welcome" id="welcome">
+
+            <div class="medical-icon">✚</div>
+
+            <h2>How can I help you?</h2>
+
+            <p>
+                Ask a medical question and MedAssist AI will retrieve
+                relevant evidence from the medical knowledge base.
+            </p>
+
+
+            <div class="examples">
+
+                <button onclick="useExample('What is glaucoma?')">
+                    What is glaucoma?
+                </button>
+
+                <button onclick="useExample('What are common symptoms of migraine?')">
+                    Migraine symptoms
+                </button>
+
+                <button onclick="useExample('What is brain cancer?')">
+                    What is brain cancer?
+                </button>
+
+                <button onclick="useExample('How is hypertension treated?')">
+                    Hypertension treatment
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <section id="messages" class="messages"></section>
+
+    </main>
+
+
+    <footer>
+
+        <div class="input-wrapper">
+
+            <textarea
+                id="queryInput"
+                placeholder="Ask a medical question..."
+                rows="1"
+            ></textarea>
+
+            <button id="sendButton" onclick="sendMessage()">
+                Send
+            </button>
+
+        </div>
+
+        <p class="footer-text">
+            Responses are generated using retrieved medical evidence.
+        </p>
+
+    </footer>
+
+</div>
+
+
+<script src="/static/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,414 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    background: #f5f7f8;
+    color: #172126;
+}
+
+
+.app {
+    min-height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+}
+
+
+header {
+    height: 72px;
+
+    padding: 0 7%;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    background: white;
+
+    border-bottom: 1px solid #e5e9eb;
+}
+
+
+header h1 {
+    margin: 0;
+
+    font-size: 21px;
+}
+
+
+header p {
+    margin: 4px 0 0;
+
+    color: #6c777d;
+
+    font-size: 13px;
+}
+
+
+.status {
+    font-size: 13px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+}
+
+
+.status-dot {
+    width: 9px;
+    height: 9px;
+
+    background: #22a06b;
+
+    border-radius: 50%;
+}
+
+
+.disclaimer {
+    margin: 18px auto 0;
+
+    width: min(900px, 90%);
+
+    padding: 13px 16px;
+
+    border: 1px solid #d8e3df;
+
+    background: #f2f8f5;
+
+    border-radius: 9px;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 4px;
+
+    font-size: 13px;
+}
+
+
+main {
+    flex: 1;
+
+    width: min(900px, 92%);
+
+    margin: auto;
+
+    padding: 35px 0 130px;
+}
+
+
+.welcome {
+    text-align: center;
+
+    margin-top: 60px;
+}
+
+
+.medical-icon {
+    width: 52px;
+    height: 52px;
+
+    margin: auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 14px;
+
+    background: #e8f5ef;
+
+    font-size: 26px;
+}
+
+
+.welcome h2 {
+    margin-bottom: 8px;
+}
+
+
+.welcome p {
+    color: #6c777d;
+
+    max-width: 550px;
+
+    margin: auto;
+}
+
+
+.examples {
+    margin-top: 26px;
+
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+
+    gap: 10px;
+}
+
+
+.examples button {
+    padding: 10px 14px;
+
+    background: white;
+
+    border: 1px solid #dfe4e7;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+}
+
+
+.examples button:hover {
+    background: #f0f5f3;
+}
+
+
+.messages {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 22px;
+}
+
+
+.message {
+    max-width: 80%;
+
+    padding: 15px 18px;
+
+    border-radius: 12px;
+
+    line-height: 1.6;
+
+    white-space: pre-wrap;
+}
+
+
+.user-message {
+    align-self: flex-end;
+
+    background: #173d35;
+
+    color: white;
+}
+
+
+.assistant-container {
+    align-self: flex-start;
+
+    width: min(760px, 100%);
+}
+
+
+.assistant-message {
+    max-width: 100%;
+
+    background: white;
+
+    border: 1px solid #e1e6e8;
+}
+
+
+.meta-row {
+    margin-top: 10px;
+
+    display: flex;
+
+    gap: 8px;
+
+    flex-wrap: wrap;
+}
+
+
+.confidence {
+    padding: 5px 9px;
+
+    border-radius: 6px;
+
+    background: #eef5f2;
+
+    font-size: 12px;
+
+    font-weight: 600;
+}
+
+
+.insufficient {
+    background: #fff4e5;
+}
+
+
+details {
+    margin-top: 10px;
+
+    background: white;
+
+    border: 1px solid #e1e6e8;
+
+    border-radius: 8px;
+
+    padding: 10px 12px;
+}
+
+
+summary {
+    cursor: pointer;
+
+    font-weight: 600;
+
+    font-size: 13px;
+}
+
+
+.source {
+    margin-top: 8px;
+
+    padding-top: 8px;
+
+    border-top: 1px solid #edf0f1;
+
+    font-size: 13px;
+}
+
+
+.safety-alert {
+    padding: 18px;
+
+    border-radius: 10px;
+
+    background: #fff0f0;
+
+    border: 1px solid #efc7c7;
+
+    line-height: 1.6;
+}
+
+
+.loading {
+    color: #69757b;
+
+    font-size: 14px;
+}
+
+
+footer {
+    position: fixed;
+
+    bottom: 0;
+
+    width: 100%;
+
+    padding: 14px 5%;
+
+    background: rgba(255, 255, 255, 0.96);
+
+    border-top: 1px solid #e1e6e8;
+}
+
+
+.input-wrapper {
+    max-width: 900px;
+
+    margin: auto;
+
+    display: flex;
+
+    gap: 10px;
+}
+
+
+textarea {
+    flex: 1;
+
+    resize: none;
+
+    padding: 14px;
+
+    font-family: inherit;
+
+    border: 1px solid #ccd4d8;
+
+    border-radius: 9px;
+
+    outline: none;
+}
+
+
+textarea:focus {
+    border-color: #507c70;
+}
+
+
+#sendButton {
+    padding: 0 22px;
+
+    border: none;
+
+    border-radius: 9px;
+
+    background: #173d35;
+
+    color: white;
+
+    cursor: pointer;
+}
+
+
+#sendButton:disabled {
+    opacity: 0.5;
+
+    cursor: not-allowed;
+}
+
+
+.footer-text {
+    text-align: center;
+
+    margin: 8px 0 0;
+
+    font-size: 11px;
+
+    color: #8a9499;
+}
+
+
+@media (max-width: 600px) {
+
+    header {
+        padding: 0 4%;
+    }
+
+
+    header p {
+        display: none;
+    }
+
+
+    .message {
+        max-width: 92%;
+    }
+
+
+    main {
+        padding-bottom: 150px;
+    }
+
+
+    .welcome {
+        margin-top: 30px;
+    }
+}
